@@ -70,6 +70,7 @@ public:
   void ParseError(string const & msg, unsigned int lineno = 0) const;
   
   void WriteFile(string const & filename);
+  void WriteToStream(ostream * o) const;
   void WriteMatlabFile(ostream * o) const;
 
   inline const map<string, string> & GetStrMap() const {

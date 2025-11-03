@@ -162,6 +162,10 @@ int main( int argc, char **argv )
     return 0;
  } 
 
+  // Output complete configuration (including all default values) to stdout
+  cout << "BEGIN Complete Configuration (with defaults):" << endl;
+  config.WriteToStream(&cout);
+  cout << "END Complete Configuration" << endl;
   
   /*initialize routing, traffic, injection functions
    */

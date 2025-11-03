@@ -291,6 +291,34 @@ void Configuration::WriteFile(string const & filename) {
  
 }
 
+// Write configuration to any output stream (including stdout)
+void Configuration::WriteToStream(ostream * config_out) const {
+  
+  for(map<string,string>::const_iterator i = _str_map.begin(); 
+      i!=_str_map.end();
+      i++){
+    //the parser won't read empty strings
+    if(i->second[0]!='\0'){
+      *config_out<<i->first<<" = "<<i->second<<";"<<endl;
+    }
+  }
+  
+  for(map<string, int>::const_iterator i = _int_map.begin(); 
+      i!=_int_map.end();
+      i++){
+    *config_out<<i->first<<" = "<<i->second<<";"<<endl;
+
+  }
+
+  for(map<string, double>::const_iterator i = _float_map.begin(); 
+      i!=_float_map.end();
+      i++){
+    *config_out<<i->first<<" = "<<i->second<<";"<<endl;
+
+  }
+  config_out->flush();
+}
+
 
 
 void Configuration::WriteMatlabFile(ostream * config_out) const {
