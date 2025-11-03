@@ -37,6 +37,12 @@
 
 extern "C" int yyparse();
 
+// Forward declaration for JSON
+#ifndef _JSON_HPP_INCLUDED
+#include "json.hpp"
+#endif
+using json = nlohmann::json;
+
 class Configuration {
   static Configuration * theConfig;
   FILE * _config_file;
@@ -46,6 +52,14 @@ protected:
   map<string,string> _str_map;
   map<string,int>    _int_map;
   map<string,double> _float_map;
+  
+  // 新增: 路由器特定配置
+  map<int, map<string, int> > _router_specific_int_map;
+  map<int, map<string, string> > _router_specific_str_map;
+  map<int, map<string, double> > _router_specific_float_map;
+  
+  // 新增: JSON 对象存储
+  json _json_config;
   
 public:
   Configuration();
@@ -60,12 +74,19 @@ public:
   int GetInt(string const & field) const;
   double GetFloat(string const & field) const;
 
+  // 新增: 获取路由器特定配置(优先返回路由器特定值,否则返回全局值)
+  string GetRouterStr(int router_id, string const & field) const;
+  int GetRouterInt(int router_id, string const & field) const;
+  double GetRouterFloat(int router_id, string const & field) const;
+
   vector<string> GetStrArray(const string & field) const;
   vector<int> GetIntArray(const string & field) const;
   vector<double> GetFloatArray(const string & field) const;
 
   void ParseFile(string const & filename);
   void ParseString(string const & str);
+  // 新增: 解析 JSON 文件
+  void ParseJsonFile(string const & filename);
   int  Input(char * line, int max_size);
   void ParseError(string const & msg, unsigned int lineno = 0) const;
   

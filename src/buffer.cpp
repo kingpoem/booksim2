@@ -32,15 +32,35 @@
 #include "buffer.hpp"
 
 Buffer::Buffer( const Configuration& config, int outputs, 
-		Module *parent, const string& name ) :
+		Module *parent, const string& name, int router_id ) :
 Module( parent, name ), _occupancy(0)
 {
-  int num_vcs = config.GetInt( "num_vcs" );
+  // 使用路由器特定配置（如果提供了 router_id，优先使用路由器特定值，否则回退到全局值）
+  int num_vcs;
+  if(router_id >= 0) {
+    num_vcs = config.GetRouterInt( router_id, "num_vcs" );
+  } else {
+    num_vcs = config.GetInt( "num_vcs" );
+  }
 
-  _size = config.GetInt("buf_size");
-  if(_size < 0) {
-    _size = num_vcs * config.GetInt( "vc_buf_size" );
-  };
+  int buf_size;
+  if(router_id >= 0) {
+    buf_size = config.GetRouterInt( router_id, "buf_size" );
+  } else {
+    buf_size = config.GetInt("buf_size");
+  }
+  
+  if(buf_size < 0) {
+    int vc_buf_size;
+    if(router_id >= 0) {
+      vc_buf_size = config.GetRouterInt( router_id, "vc_buf_size" );
+    } else {
+      vc_buf_size = config.GetInt( "vc_buf_size" );
+    }
+    _size = num_vcs * vc_buf_size;
+  } else {
+    _size = buf_size;
+  }
 
   _vc.resize(num_vcs);
 
@@ -51,7 +71,12 @@ Module( parent, name ), _occupancy(0)
   }
 
 #ifdef TRACK_BUFFERS
-  int classes = config.GetInt("classes");
+  int classes;
+  if(router_id >= 0) {
+    classes = config.GetRouterInt( router_id, "classes" );
+  } else {
+    classes = config.GetInt("classes");
+  }
   _class_occupancy.resize(classes, 0);
 #endif
 }

@@ -45,15 +45,16 @@ EventRouter::EventRouter( const Configuration& config,
 {
   ostringstream module_name;
   
-  _vcs            = config.GetInt( "num_vcs" );
+  // 使用路由器特定配置（优先使用路由器特定值，否则回退到全局值）
+  _vcs            = config.GetRouterInt( id, "num_vcs" );
 
   // Cut-through mode --- packets are not broken
   // up and input buffers are assumed to be 
   // expressed in units of maximum size packets.
   
-  _vct            = config.GetInt( "vct" );
+  _vct            = config.GetRouterInt( id, "vct" );
 
-  // Routing
+  // Routing - 注意：routing_function 和 topology 通常是全局配置
 
   string rf = config.GetStr("routing_function") + "_" + config.GetStr("topology");
   map<string, tRoutingFunction>::iterator rf_iter = gRoutingFunctionMap.find(rf);
@@ -69,7 +70,7 @@ EventRouter::EventRouter( const Configuration& config,
 
   for ( int i = 0; i < _inputs; ++i ) {
     module_name << "buf_" << i;
-    _buf[i] = new Buffer( config, _outputs, this, module_name.str( ) );
+    _buf[i] = new Buffer( config, _outputs, this, module_name.str( ), id );
     module_name.seekp( 0, ios::beg );
     _active[i].resize(_vcs, false);
   }

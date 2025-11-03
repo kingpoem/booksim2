@@ -165,6 +165,107 @@ void Configuration::ParseString(string const & str)
   _config_string = "";
 }
 
+void Configuration::ParseJsonFile(string const & filename)
+{
+  ifstream f(filename);
+  if (!f.is_open()) {
+    ParseError("Cannot open JSON file: " + filename);
+    return;
+  }
+
+  try {
+    _json_config = json::parse(f);
+    f.close();
+
+    // 1. 解析全局配置到现有的三个 map
+    // 优先检查是否已注册（通过 AddStrField 等预先注册），如果未注册但有值，则添加到对应 map
+    for (auto& item : _json_config.items()) {
+      string key = item.key();
+      if (key == "routers") continue; // 跳过路由器特定配置
+
+      auto& value = item.value();
+      if (value.is_string()) {
+        // 如果已注册为字符串字段，则更新；否则如果是新字段，也添加到 map
+        _str_map[key] = value.get<string>();
+      } else if (value.is_number_integer()) {
+        // 如果已注册为整数字段，则更新；否则如果是新字段，也添加到 map
+        _int_map[key] = value.get<int>();
+      } else if (value.is_number_float()) {
+        // 如果已注册为浮点数字段，则更新；否则如果是新字段，也添加到 map
+        _float_map[key] = value.get<double>();
+      }
+    }
+
+    // 2. 解析路由器特定配置
+    if (_json_config.contains("routers") && _json_config["routers"].is_object()) {
+      for (auto& router_item : _json_config["routers"].items()) {
+        string router_id_str = router_item.key();
+        int router_id = stoi(router_id_str);
+        auto& router_config = router_item.value();
+
+        for (auto& param_item : router_config.items()) {
+          string key = param_item.key();
+          auto& value = param_item.value();
+
+          if (value.is_string()) {
+            _router_specific_str_map[router_id][key] = value.get<string>();
+          } else if (value.is_number_integer()) {
+            _router_specific_int_map[router_id][key] = value.get<int>();
+          } else if (value.is_number_float()) {
+            _router_specific_float_map[router_id][key] = value.get<double>();
+          }
+        }
+      }
+    }
+  } catch (json::exception& e) {
+    ParseError(string("JSON parse error: ") + e.what());
+  } catch (...) {
+    ParseError("Unknown error parsing JSON file: " + filename);
+  }
+}
+
+string Configuration::GetRouterStr(int router_id, string const & field) const
+{
+  // 优先返回路由器特定配置
+  auto router_it = _router_specific_str_map.find(router_id);
+  if (router_it != _router_specific_str_map.end()) {
+    auto param_it = router_it->second.find(field);
+    if (param_it != router_it->second.end()) {
+      return param_it->second;
+    }
+  }
+  // 回退到全局配置
+  return GetStr(field);
+}
+
+int Configuration::GetRouterInt(int router_id, string const & field) const
+{
+  // 优先返回路由器特定配置
+  auto router_it = _router_specific_int_map.find(router_id);
+  if (router_it != _router_specific_int_map.end()) {
+    auto param_it = router_it->second.find(field);
+    if (param_it != router_it->second.end()) {
+      return param_it->second;
+    }
+  }
+  // 回退到全局配置
+  return GetInt(field);
+}
+
+double Configuration::GetRouterFloat(int router_id, string const & field) const
+{
+  // 优先返回路由器特定配置
+  auto router_it = _router_specific_float_map.find(router_id);
+  if (router_it != _router_specific_float_map.end()) {
+    auto param_it = router_it->second.find(field);
+    if (param_it != router_it->second.end()) {
+      return param_it->second;
+    }
+  }
+  // 回退到全局配置
+  return GetFloat(field);
+}
+
 int Configuration::Input(char * line, int max_size)
 {
   int length = 0;
@@ -234,17 +335,32 @@ bool ParseArgs(Configuration * cf, int argc, char * * argv)
     size_t pos = arg.find('=');
     bool dash = (argv[i][0] =='-');
     if(pos == string::npos && !dash) {
-      // parse config file
-      cf->ParseFile( argv[i] );
-      ifstream in(argv[i]);
-      cout << "BEGIN Configuration File: " << argv[i] << endl;
-      while (!in.eof()) {
-	char c;
-	in.get(c);
-	cout << c ;
+      // 检测文件扩展名
+      if (arg.find(".json") != string::npos) {
+        // JSON 文件
+        cf->ParseJsonFile(argv[i]);
+        ifstream in(argv[i]);
+        cout << "BEGIN Configuration File (JSON): " << argv[i] << endl;
+        while (!in.eof()) {
+          char c;
+          in.get(c);
+          cout << c;
+        }
+        cout << "END Configuration File (JSON): " << argv[i] << endl;
+        rc = true;
+      } else {
+        // 传统配置文件
+        cf->ParseFile(argv[i]);
+        ifstream in(argv[i]);
+        cout << "BEGIN Configuration File: " << argv[i] << endl;
+        while (!in.eof()) {
+          char c;
+          in.get(c);
+          cout << c;
+        }
+        cout << "END Configuration File: " << argv[i] << endl;
+        rc = true;
       }
-      cout << "END Configuration File: " << argv[i] << endl;
-      rc = true;
     } else if(pos != string::npos)  {
       // override individual parameter
       cout << "OVERRIDE Parameter: " << arg << endl;

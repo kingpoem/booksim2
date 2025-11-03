@@ -51,28 +51,29 @@ IQRouter::IQRouter( Configuration const & config, Module *parent,
 		    string const & name, int id, int inputs, int outputs )
 : Router( config, parent, name, id, inputs, outputs ), _active(false)
 {
-  _vcs         = config.GetInt( "num_vcs" );
+  // 使用路由器特定配置（优先使用路由器特定值，否则回退到全局值）
+  _vcs         = config.GetRouterInt( id, "num_vcs" );
 
-  _vc_busy_when_full = (config.GetInt("vc_busy_when_full") > 0);
-  _vc_prioritize_empty = (config.GetInt("vc_prioritize_empty") > 0);
-  _vc_shuffle_requests = (config.GetInt("vc_shuffle_requests") > 0);
+  _vc_busy_when_full = (config.GetRouterInt(id, "vc_busy_when_full") > 0);
+  _vc_prioritize_empty = (config.GetRouterInt(id, "vc_prioritize_empty") > 0);
+  _vc_shuffle_requests = (config.GetRouterInt(id, "vc_shuffle_requests") > 0);
 
-  _speculative = (config.GetInt("speculative") > 0);
-  _spec_check_elig = (config.GetInt("spec_check_elig") > 0);
-  _spec_check_cred = (config.GetInt("spec_check_cred") > 0);
-  _spec_mask_by_reqs = (config.GetInt("spec_mask_by_reqs") > 0);
+  _speculative = (config.GetRouterInt(id, "speculative") > 0);
+  _spec_check_elig = (config.GetRouterInt(id, "spec_check_elig") > 0);
+  _spec_check_cred = (config.GetRouterInt(id, "spec_check_cred") > 0);
+  _spec_mask_by_reqs = (config.GetRouterInt(id, "spec_mask_by_reqs") > 0);
 
-  _routing_delay    = config.GetInt( "routing_delay" );
-  _vc_alloc_delay   = config.GetInt( "vc_alloc_delay" );
+  _routing_delay    = config.GetRouterInt( id, "routing_delay" );
+  _vc_alloc_delay   = config.GetRouterInt( id, "vc_alloc_delay" );
   if(!_vc_alloc_delay) {
     Error("VC allocator cannot have zero delay.");
   }
-  _sw_alloc_delay   = config.GetInt( "sw_alloc_delay" );
+  _sw_alloc_delay   = config.GetRouterInt( id, "sw_alloc_delay" );
   if(!_sw_alloc_delay) {
     Error("Switch allocator cannot have zero delay.");
   }
 
-  // Routing
+  // Routing - 注意：routing_function 和 topology 通常是全局配置
   string const rf = config.GetStr("routing_function") + "_" + config.GetStr("topology");
   map<string, tRoutingFunction>::const_iterator rf_iter = gRoutingFunctionMap.find(rf);
   if(rf_iter == gRoutingFunctionMap.end()) {
@@ -85,7 +86,7 @@ IQRouter::IQRouter( Configuration const & config, Module *parent,
   for ( int i = 0; i < _inputs; ++i ) {
     ostringstream module_name;
     module_name << "buf_" << i;
-    _buf[i] = new Buffer(config, _outputs, this, module_name.str( ) );
+    _buf[i] = new Buffer(config, _outputs, this, module_name.str( ), id );
     module_name.str("");
   }
 
@@ -94,12 +95,12 @@ IQRouter::IQRouter( Configuration const & config, Module *parent,
   for (int j = 0; j < _outputs; ++j) {
     ostringstream module_name;
     module_name << "next_vc_o" << j;
-    _next_buf[j] = new BufferState( config, this, module_name.str( ) );
+    _next_buf[j] = new BufferState( config, this, module_name.str( ), id );
     module_name.str("");
   }
 
   // Alloc allocators
-  string vc_alloc_type = config.GetStr( "vc_allocator" );
+  string vc_alloc_type = config.GetRouterStr( id, "vc_allocator" );
   if(vc_alloc_type == "piggyback") {
     if(!_speculative) {
       Error("Piggyback VC allocation requires speculative switch allocation to be enabled.");
@@ -117,7 +118,7 @@ IQRouter::IQRouter( Configuration const & config, Module *parent,
     }
   }
   
-  string sw_alloc_type = config.GetStr( "sw_allocator" );
+  string sw_alloc_type = config.GetRouterStr( id, "sw_allocator" );
   _sw_allocator = Allocator::NewAllocator( this, "sw_allocator",
 					   sw_alloc_type,
 					   _inputs*_input_speedup, 
@@ -127,7 +128,7 @@ IQRouter::IQRouter( Configuration const & config, Module *parent,
     Error("Unknown sw_allocator type: " + sw_alloc_type);
   }
   
-  string spec_sw_alloc_type = config.GetStr( "spec_sw_allocator" );
+  string spec_sw_alloc_type = config.GetRouterStr( id, "spec_sw_allocator" );
   if ( _speculative && ( spec_sw_alloc_type != "prio" ) ) {
     _spec_sw_allocator = Allocator::NewAllocator( this, "spec_sw_allocator",
 						  spec_sw_alloc_type,
@@ -144,7 +145,7 @@ IQRouter::IQRouter( Configuration const & config, Module *parent,
   for(int i = 0; i < _inputs*_input_speedup; ++i)
     _sw_rr_offset[i] = i % _input_speedup;
   
-  _noq = config.GetInt("noq") > 0;
+  _noq = config.GetRouterInt(id, "noq") > 0;
   if(_noq) {
     if(_routing_delay) {
       Error("NOQ requires lookahead routing to be enabled.");
@@ -158,12 +159,12 @@ IQRouter::IQRouter( Configuration const & config, Module *parent,
   _noq_next_vc_end.resize(_inputs, vector<int>(_vcs, -1));
 
   // Output queues
-  _output_buffer_size = config.GetInt("output_buffer_size");
+  _output_buffer_size = config.GetRouterInt(id, "output_buffer_size");
   _output_buffer.resize(_outputs); 
   _credit_buffer.resize(_inputs); 
 
   // Switch configuration (when held for multiple cycles)
-  _hold_switch_for_packet = (config.GetInt("hold_switch_for_packet") > 0);
+  _hold_switch_for_packet = (config.GetRouterInt(id, "hold_switch_for_packet") > 0);
   _switch_hold_in.resize(_inputs*_input_speedup, -1);
   _switch_hold_out.resize(_outputs*_output_speedup, -1);
   _switch_hold_vc.resize(_inputs*_input_speedup, -1);

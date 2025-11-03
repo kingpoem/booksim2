@@ -536,18 +536,42 @@ void BufferState::SimpleFeedbackSharedBufferPolicy::FreeSlotFor(int vc)
   SharedBufferPolicy::FreeSlotFor(vc);
 }
 
-BufferState::BufferState( const Configuration& config, Module *parent, const string& name ) : 
+BufferState::BufferState( const Configuration& config, Module *parent, const string& name, int router_id ) : 
   Module( parent, name ), _occupancy(0)
 {
-  _vcs = config.GetInt( "num_vcs" );
-  _size = config.GetInt("buf_size");
-  if(_size < 0) {
-    _size = _vcs * config.GetInt("vc_buf_size");
+  // 使用路由器特定配置（如果提供了 router_id，优先使用路由器特定值，否则回退到全局值）
+  if(router_id >= 0) {
+    _vcs = config.GetRouterInt( router_id, "num_vcs" );
+  } else {
+    _vcs = config.GetInt( "num_vcs" );
+  }
+  
+  int buf_size;
+  if(router_id >= 0) {
+    buf_size = config.GetRouterInt( router_id, "buf_size" );
+  } else {
+    buf_size = config.GetInt("buf_size");
+  }
+  
+  if(buf_size < 0) {
+    int vc_buf_size;
+    if(router_id >= 0) {
+      vc_buf_size = config.GetRouterInt( router_id, "vc_buf_size" );
+    } else {
+      vc_buf_size = config.GetInt("vc_buf_size");
+    }
+    _size = _vcs * vc_buf_size;
+  } else {
+    _size = buf_size;
   }
 
   _buffer_policy = BufferPolicy::New(config, this, "policy");
 
-  _wait_for_tail_credit = config.GetInt( "wait_for_tail_credit" );
+  if(router_id >= 0) {
+    _wait_for_tail_credit = config.GetRouterInt( router_id, "wait_for_tail_credit" );
+  } else {
+    _wait_for_tail_credit = config.GetInt( "wait_for_tail_credit" );
+  }
 
   _vc_occupancy.resize(_vcs, 0);
 
@@ -558,7 +582,11 @@ BufferState::BufferState( const Configuration& config, Module *parent, const str
   _last_pid.resize(_vcs, -1);
 
 #ifdef TRACK_BUFFERS
-  _classes = config.GetInt("classes");
+  if(router_id >= 0) {
+    _classes = config.GetRouterInt( router_id, "classes" );
+  } else {
+    _classes = config.GetInt("classes");
+  }
   _outstanding_classes.resize(_vcs);
   _class_occupancy.resize(_classes, 0);
 #endif

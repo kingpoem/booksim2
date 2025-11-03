@@ -61,13 +61,14 @@ Router::Router( const Configuration& config,
 TimedModule( parent, name ), _id( id ), _inputs( inputs ), _outputs( outputs ),
    _partial_internal_cycles(0.0)
 {
-  _crossbar_delay   = ( config.GetInt( "st_prepare_delay" ) + 
-			config.GetInt( "st_final_delay" ) );
-  _credit_delay     = config.GetInt( "credit_delay" );
-  _input_speedup    = config.GetInt( "input_speedup" );
-  _output_speedup   = config.GetInt( "output_speedup" );
-  _internal_speedup = config.GetFloat( "internal_speedup" );
-  _classes          = config.GetInt( "classes" );
+  // 使用路由器特定配置（优先使用路由器特定值，否则回退到全局值）
+  _crossbar_delay   = ( config.GetRouterInt( id, "st_prepare_delay" ) + 
+			config.GetRouterInt( id, "st_final_delay" ) );
+  _credit_delay     = config.GetRouterInt( id, "credit_delay" );
+  _input_speedup    = config.GetRouterInt( id, "input_speedup" );
+  _output_speedup   = config.GetRouterInt( id, "output_speedup" );
+  _internal_speedup = config.GetRouterFloat( id, "internal_speedup" );
+  _classes          = config.GetRouterInt( id, "classes" );
 
 #ifdef TRACK_FLOWS
   _received_flits.resize(_classes, vector<int>(_inputs, 0));

@@ -49,15 +49,16 @@ ChaosRouter::ChaosRouter( const Configuration& config,
     Error( "Chaos router must have equal number of input and output ports" );
   }
 
-  _buffer_size      = config.GetInt( "vc_buf_size" );
+  // 使用路由器特定配置（优先使用路由器特定值，否则回退到全局值）
+  _buffer_size      = config.GetRouterInt( id, "vc_buf_size" );
   assert(_buffer_size >= config.GetInt( "const_flits_per_packet" ));
 
-  _multi_queue_size = config.GetInt( "multi_queue_size" );
+  _multi_queue_size = config.GetRouterInt( id, "multi_queue_size" );
   
   _cur_channel = 0;
   _read_stall  = 0;
 
-  // Routing
+  // Routing - 注意：routing_function 和 topology 通常是全局配置
 
   string rf = config.GetStr("routing_function") + "_" + config.GetStr("topology");
   map<string, tRoutingFunction>::iterator rf_iter = gRoutingFunctionMap.find(rf);

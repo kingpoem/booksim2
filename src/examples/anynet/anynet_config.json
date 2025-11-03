@@ -1,0 +1,42 @@
+{
+  "topology": "anynet",
+  "routing_function": "min",
+  "network_file": "anynet_file",
+  "traffic": "uniform",
+  "use_read_write": 0,
+  "sample_period": 10000,
+  "injection_rate": 0.01,
+  "vc_allocator": "separable_input_first",
+  "sw_allocator": "separable_input_first",
+  "alloc_iters": 1,
+  "num_vcs": 1,
+  "vc_buf_size": 3,
+  "router": "iq",
+  "credit_delay": 0,
+  "routing_delay": 1,
+  "vc_alloc_delay": 1,
+  "sw_alloc_delay": 1,
+  "input_speedup": 1,
+  "output_speedup": 1,
+  "internal_speedup": 1.0,
+  "classes": 1,
+  "sim_type": "latency",
+  "warmup_periods": 3,
+  "max_samples": 10,
+  "seed": 0,
+  "routers": {
+    "0": {
+      "num_vcs": 2,
+      "vc_buf_size": 4,
+      "input_speedup": 1
+    },
+    "1": {
+      "num_vcs": 2,
+      "vc_buf_size": 5
+    },
+    "2": {
+      "num_vcs": 1,
+      "vc_buf_size": 3
+    }
+  }
+}
