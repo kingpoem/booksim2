@@ -1,5 +1,55 @@
-*~
-\#*#
+# =========================
+# OS / File Explorer
+# =========================
+.DS_Store
 ._*
 .Apple*
-.DS_Store
+Thumbs.db
+Desktop.ini
+
+# =========================
+# Editor / IDE temp files
+# =========================
+*~
+\#*#
+*.swp
+*.swo
+
+# =========================
+# Build directories
+# =========================
+build/
+cmake-build-*/
+
+# =========================
+# CMake / VS / Ninja artifacts
+# =========================
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+*.dir/
+*.ninja
+.ninja_deps
+.ninja_log
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+
+# =========================
+# Binaries / debug symbols
+# =========================
+*.obj
+*.o
+*.lib
+*.a
+*.dll
+*.pdb
+*.ilk
+*.exp
+*.exe
+
+# Keep source-controlled outputs explicit:
+src/booksim.exe

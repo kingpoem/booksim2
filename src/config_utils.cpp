@@ -36,6 +36,7 @@
 #include <sstream>
 #include <fstream>
 #include <cstdlib>
+#include <iterator>
 
 #include "config_utils.hpp"
 
@@ -147,22 +148,18 @@ vector<double> Configuration::GetFloatArray(string const & field) const
 
 void Configuration::ParseFile(string const & filename)
 {
-  if((_config_file = fopen(filename.c_str(), "r")) == 0) {
+  ifstream in(filename.c_str(), ios::in | ios::binary);
+  if(!in.is_open()) {
     cerr << "Could not open configuration file " << filename << endl;
     exit(-1);
   }
-
-  yyparse();
-
-  fclose(_config_file);
-  _config_file = 0;
+  const string content((istreambuf_iterator<char>(in)), istreambuf_iterator<char>());
+  ParseConfigContent(content, this, 1);
 }
 
 void Configuration::ParseString(string const & str)
 {
-  _config_string = str + ';';
-  yyparse();
-  _config_string = "";
+  ParseConfigContent(str + ';', this, 1);
 }
 
 void Configuration::ParseJsonFile(string const & filename)
@@ -299,31 +296,6 @@ Configuration * Configuration::GetTheConfig()
 }
 
 //============================================================
-
-extern "C" void config_error( char const * msg, int lineno )
-{
-  Configuration::GetTheConfig( )->ParseError( msg, lineno );
-}
-
-extern "C" void config_assign_string( char const * field, char const * value )
-{
-  Configuration::GetTheConfig()->Assign(field, value);
-}
-
-extern "C" void config_assign_int( char const * field, int value )
-{
-  Configuration::GetTheConfig()->Assign(field, value);
-}
-
-extern "C" void config_assign_float( char const * field, double value )
-{
-  Configuration::GetTheConfig()->Assign(field, value);
-}
-
-extern "C" int config_input(char * line, int max_size)
-{
-  return Configuration::GetTheConfig()->Input(line, max_size);
-}
 
 bool ParseArgs(Configuration * cf, int argc, char * * argv)
 {

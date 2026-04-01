@@ -1,0 +1,7 @@
+# Baseline cases for compatibility regression (M0)
+# Format: <label>|<relative_config_path>
+singleconfig|src/examples/singleconfig
+torus88|src/examples/torus88
+mesh88_lat|src/examples/mesh88_lat
+dragonflyconfig|src/examples/dragonflyconfig
+anynet_config|src/examples/anynet/anynet_config

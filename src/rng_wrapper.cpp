@@ -25,6 +25,9 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifndef __STDC__
+#define __STDC__ 1
+#endif
 #define main rng_main
 #include "rng.c"
 

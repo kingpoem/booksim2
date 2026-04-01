@@ -34,12 +34,11 @@
  *
  *
  */
-#include <sys/time.h>
-
 #include <string>
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
+#include <chrono>
 
 
 
@@ -61,7 +60,7 @@
 //////////////////////
 
  /* the current traffic manager instance */
-TrafficManager * trafficManager = NULL;
+TrafficManager * trafficManager = nullptr;
 
 int GetSimTime() {
   return trafficManager->getTime();
@@ -70,7 +69,7 @@ int GetSimTime() {
 class Stats;
 Stats * GetStats(const std::string & name) {
   Stats* test =  trafficManager->getStats(name);
-  if(test == 0){
+  if(test == nullptr){
     cout<<"warning statistics "<<name<<" not found"<<endl;
   }
   return test;
@@ -120,16 +119,15 @@ bool Simulate( BookSimConfig const & config )
    */
 
   double total_time; /* Amount of time we've run */
-  struct timeval start_time, end_time; /* Time before/after user code */
+  std::chrono::steady_clock::time_point start_time, end_time; /* Time before/after user code */
   total_time = 0.0;
-  gettimeofday(&start_time, NULL);
+  start_time = std::chrono::steady_clock::now();
 
   bool result = trafficManager->Run() ;
 
 
-  gettimeofday(&end_time, NULL);
-  total_time = ((double)(end_time.tv_sec) + (double)(end_time.tv_usec)/1000000.0)
-            - ((double)(start_time.tv_sec) + (double)(start_time.tv_usec)/1000000.0);
+  end_time = std::chrono::steady_clock::now();
+  total_time = std::chrono::duration<double>(end_time - start_time).count();
 
   cout<<"Total run time "<<total_time<<endl;
 
@@ -145,7 +143,7 @@ bool Simulate( BookSimConfig const & config )
   }
 
   delete trafficManager;
-  trafficManager = NULL;
+  trafficManager = nullptr;
 
   return result;
 }
@@ -172,7 +170,7 @@ int main( int argc, char **argv )
   
   string watch_out_file = config.GetStr( "watch_out" );
   if(watch_out_file == "") {
-    gWatchOut = NULL;
+    gWatchOut = nullptr;
   } else if(watch_out_file == "-") {
     gWatchOut = &cout;
   } else {

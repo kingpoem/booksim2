@@ -35,7 +35,8 @@
 #include<map>
 #include<vector>
 
-extern "C" int yyparse();
+class Configuration;
+bool ParseConfigContent(const string &content, Configuration *config, unsigned int base_lineno = 1);
 
 // Forward declaration for JSON
 #ifndef _JSON_HPP_INCLUDED
