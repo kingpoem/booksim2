@@ -1,0 +1,19 @@
+{
+  "chiplet": {
+    "x": 2,
+    "y": 1,
+    "connect": "x",
+    "k": 2,
+    "die_k": [2, 2],
+    "intra_latency": 1,
+    "d2d_latency": 2,
+    "die_intra_latency": [3, 1]
+  },
+  "sim": {
+    "traffic": "uniform",
+    "packet_size": 4,
+    "injection_rate": 0.003,
+    "sim_type": "latency",
+    "latency_thres": 5000.0
+  }
+}

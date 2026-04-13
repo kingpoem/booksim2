@@ -40,6 +40,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
+#include <vector>
 
 
 
@@ -84,6 +85,15 @@ int gN;//dimension
 int gC;//concentration
 
 int gNodes;
+
+int gChipletX = 1;
+int gChipletY = 1;
+int gChipletK = 8;
+int gChipletConnectX = 1;
+int gChipletConnectY = 0;
+
+std::vector<int> gChipletDieK;
+std::vector<int> gChipletRidBase;
 
 //generate nocviewer trace
 bool gTrace;

@@ -57,6 +57,15 @@ BookSimConfig::BookSimConfig( )
   //simulator tries to correclty adjust latency for node/router placement 
   _int_map["use_noc_latency"] = 1;
 
+  // Chiplet mesh topology (topology = chiplet_mesh)
+  _int_map["chiplet_x"] = 1;
+  _int_map["chiplet_y"] = 1;
+  _int_map["chiplet_k"] = 8;
+  AddStrField( "chiplet_connect", "x" );
+  _int_map["chiplet_intra_latency"] = 0;
+  _int_map["chiplet_d2d_latency"] = 2;
+  AddStrField("chiplet_die_k", "");
+  AddStrField("chiplet_die_intra_latency", "");
 
   //used for noc latency calcualtion for network with concentration
   _int_map["x"] = 8; //number of routers in X

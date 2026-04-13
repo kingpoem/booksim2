@@ -47,6 +47,7 @@
 #include "fattree.hpp"
 #include "anynet.hpp"
 #include "dragonfly.hpp"
+#include "chiplet_mesh.hpp"
 
 
 Network::Network( const Configuration &config, const string & name ) :
@@ -111,6 +112,8 @@ Network * Network::New(const Configuration & config, const string & name)
   } else if ( topo == "dragonflynew"){
     DragonFlyNew::RegisterRoutingFunctions() ;
     n = new DragonFlyNew(config, name);
+  } else if ( topo == "chiplet_mesh" ) {
+    n = new ChipletMesh(config, name);
   } else {
     cerr << "Unknown topology: " << topo << endl;
   }

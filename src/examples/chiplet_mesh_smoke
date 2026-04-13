@@ -1,0 +1,31 @@
+topology = chiplet_mesh;
+routing_function = dim_order_chiplet_mesh;
+
+chiplet_x = 2;
+chiplet_y = 1;
+chiplet_k = 2;
+chiplet_connect = x;
+
+num_vcs     = 8;
+vc_buf_size = 8;
+wait_for_tail_credit = 1;
+
+vc_allocator = islip;
+sw_allocator = islip;
+alloc_iters  = 1;
+
+credit_delay   = 2;
+routing_delay  = 0;
+vc_alloc_delay = 1;
+sw_alloc_delay = 1;
+
+input_speedup     = 2;
+output_speedup    = 1;
+internal_speedup  = 1.0;
+
+traffic = uniform;
+packet_size = 4;
+
+sim_type = latency;
+injection_rate = 0.0005;
+latency_thres = 10000.0;

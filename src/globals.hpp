@@ -46,6 +46,16 @@ extern int gC;
 
 extern int gNodes;
 
+extern int gChipletX;
+extern int gChipletY;
+extern int gChipletK;
+extern int gChipletConnectX;
+extern int gChipletConnectY;
+
+// Per-die mesh radix (size chiplet_x*chiplet_y) and router id prefix (size+1).
+extern std::vector<int> gChipletDieK;
+extern std::vector<int> gChipletRidBase;
+
 extern bool gTrace;
 
 extern std::ostream * gWatchOut;

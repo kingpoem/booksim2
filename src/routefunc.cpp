@@ -49,6 +49,8 @@
 #include "tree4.hpp"
 #include "qtree.hpp"
 #include "cmesh.hpp"
+#include "chiplet_mesh.hpp"
+#include "globals.hpp"
 
 
 
@@ -1913,6 +1915,248 @@ void chaos_mesh( const Router *r, const Flit *f,
 }
 
 //=============================================================
+// Chiplet mesh (multi-die): dimension order cx, cy, intra x, intra y
+
+static void chiplet_rf_count_ports(int id, int Cx, int Cy, bool cx_link,
+                                   bool cy_link, int &inports, int &outports) {
+  int cx, cy, x, y;
+  ChipletGlobalIdToCoords(id, cx, cy, x, y);
+  int const k = gChipletDieK[cy * Cx + cx];
+  inports = outports = 0;
+  if (x < k - 1) {
+    ++inports;
+    ++outports;
+  }
+  if (x > 0) {
+    ++inports;
+    ++outports;
+  }
+  if (y < k - 1) {
+    ++inports;
+    ++outports;
+  }
+  if (y > 0) {
+    ++inports;
+    ++outports;
+  }
+  if (cx_link && cx < Cx - 1 && x == k - 1) {
+    ++inports;
+    ++outports;
+  }
+  if (cx_link && cx > 0 && x == 0) {
+    ++inports;
+    ++outports;
+  }
+  if (cy_link && cy < Cy - 1 && y == k - 1) {
+    ++inports;
+    ++outports;
+  }
+  if (cy_link && cy > 0 && y == 0) {
+    ++inports;
+    ++outports;
+  }
+  ++inports;
+  ++outports;
+}
+
+static int chiplet_rf_out_after_mesh(int x, int y, int k) {
+  int p = 0;
+  if (x < k - 1) {
+    ++p;
+  }
+  if (x > 0) {
+    ++p;
+  }
+  if (y < k - 1) {
+    ++p;
+  }
+  if (y > 0) {
+    ++p;
+  }
+  return p;
+}
+
+static int chiplet_rf_oport_mesh_px(int x, int y, int k) {
+  assert(x < k - 1);
+  (void)y;
+  return 0;
+}
+
+static int chiplet_rf_oport_mesh_mx(int x, int y, int k) {
+  assert(x > 0);
+  int p = 0;
+  if (x < k - 1) {
+    ++p;
+  }
+  return p;
+}
+
+static int chiplet_rf_oport_mesh_py(int x, int y, int k) {
+  assert(y < k - 1);
+  int p = 0;
+  if (x < k - 1) {
+    ++p;
+  }
+  if (x > 0) {
+    ++p;
+  }
+  return p;
+}
+
+static int chiplet_rf_oport_mesh_my(int x, int y, int k) {
+  assert(y > 0);
+  int p = 0;
+  if (x < k - 1) {
+    ++p;
+  }
+  if (x > 0) {
+    ++p;
+  }
+  if (y < k - 1) {
+    ++p;
+  }
+  return p;
+}
+
+static int chiplet_rf_oport_d2d_px(int cx, int cy, int x, int y, int k, bool cnx,
+                                   bool cny, int Cx, int Cy) {
+  int p = chiplet_rf_out_after_mesh(x, y, k);
+  assert(cnx && cx < Cx - 1 && x == k - 1);
+  (void)cy;
+  (void)cny;
+  (void)Cy;
+  return p;
+}
+
+static int chiplet_rf_oport_d2d_mx(int cx, int cy, int x, int y, int k, bool cnx,
+                                   bool cny, int Cx, int Cy) {
+  int p = chiplet_rf_out_after_mesh(x, y, k);
+  if (cnx && cx < Cx - 1 && x == k - 1) {
+    ++p;
+  }
+  assert(cnx && cx > 0 && x == 0);
+  (void)cy;
+  (void)cny;
+  (void)Cy;
+  return p;
+}
+
+static int chiplet_rf_oport_d2d_py(int cx, int cy, int x, int y, int k, bool cnx,
+                                   bool cny, int Cx, int Cy) {
+  int p = chiplet_rf_out_after_mesh(x, y, k);
+  if (cnx && cx < Cx - 1 && x == k - 1) {
+    ++p;
+  }
+  if (cnx && cx > 0 && x == 0) {
+    ++p;
+  }
+  assert(cny && cy < Cy - 1 && y == k - 1);
+  (void)Cx;
+  return p;
+}
+
+static int chiplet_rf_oport_d2d_my(int cx, int cy, int x, int y, int k, bool cnx,
+                                   bool cny, int Cx, int Cy) {
+  int p = chiplet_rf_out_after_mesh(x, y, k);
+  if (cnx && cx < Cx - 1 && x == k - 1) {
+    ++p;
+  }
+  if (cnx && cx > 0 && x == 0) {
+    ++p;
+  }
+  if (cny && cy < Cy - 1 && y == k - 1) {
+    ++p;
+  }
+  assert(cny && cy > 0 && y == 0);
+  (void)Cx;
+  return p;
+}
+
+static int chiplet_rf_next_out_port(int cur, int dest) {
+  int const Cx = gChipletX;
+  int const Cy = gChipletY;
+  int const k = ChipletGlobalKAtRouter(cur);
+  bool const cnx = gChipletConnectX != 0;
+  bool const cny = gChipletConnectY != 0;
+
+  int cx, cy, x, y;
+  ChipletGlobalIdToCoords(cur, cx, cy, x, y);
+  int dcx, dcy, dx, dy;
+  ChipletGlobalIdToCoords(dest, dcx, dcy, dx, dy);
+
+  if (cur == dest) {
+    int in0, ou;
+    chiplet_rf_count_ports(cur, Cx, Cy, cnx, cny, in0, ou);
+    return ou - 1;
+  }
+
+  if (dcx != cx) {
+    if (dcx > cx) {
+      if (x < k - 1) {
+        return chiplet_rf_oport_mesh_px(x, y, k);
+      }
+      return chiplet_rf_oport_d2d_px(cx, cy, x, y, k, cnx, cny, Cx, Cy);
+    } else {
+      if (x > 0) {
+        return chiplet_rf_oport_mesh_mx(x, y, k);
+      }
+      return chiplet_rf_oport_d2d_mx(cx, cy, x, y, k, cnx, cny, Cx, Cy);
+    }
+  }
+  if (dcy != cy) {
+    if (dcy > cy) {
+      if (y < k - 1) {
+        return chiplet_rf_oport_mesh_py(x, y, k);
+      }
+      return chiplet_rf_oport_d2d_py(cx, cy, x, y, k, cnx, cny, Cx, Cy);
+    } else {
+      if (y > 0) {
+        return chiplet_rf_oport_mesh_my(x, y, k);
+      }
+      return chiplet_rf_oport_d2d_my(cx, cy, x, y, k, cnx, cny, Cx, Cy);
+    }
+  }
+  if (dx != x) {
+    if (dx > x) {
+      return chiplet_rf_oport_mesh_px(x, y, k);
+    }
+    return chiplet_rf_oport_mesh_mx(x, y, k);
+  }
+  if (dy != y) {
+    if (dy > y) {
+      return chiplet_rf_oport_mesh_py(x, y, k);
+    }
+    return chiplet_rf_oport_mesh_my(x, y, k);
+  }
+  assert(false);
+  return -1;
+}
+
+void dim_order_chiplet_mesh(const Router *r, const Flit *f, int in_channel,
+                            OutputSet *outputs, bool inject) {
+  int out_port = inject ? -1 : chiplet_rf_next_out_port(r->GetID(), f->dest);
+
+  int vcBegin = 0, vcEnd = gNumVCs - 1;
+  if ( f->type == Flit::READ_REQUEST ) {
+    vcBegin = gReadReqBeginVC;
+    vcEnd = gReadReqEndVC;
+  } else if ( f->type == Flit::WRITE_REQUEST ) {
+    vcBegin = gWriteReqBeginVC;
+    vcEnd = gWriteReqEndVC;
+  } else if ( f->type ==  Flit::READ_REPLY ) {
+    vcBegin = gReadReplyBeginVC;
+    vcEnd = gReadReplyEndVC;
+  } else if ( f->type == Flit::WRITE_REPLY ) {
+    vcBegin = gWriteReplyBeginVC;
+    vcEnd = gWriteReplyEndVC;
+  }
+  assert(((f->vc >= vcBegin) && (f->vc <= vcEnd)) || (inject && (f->vc < 0)));
+
+  outputs->Clear();
+  outputs->AddRange(out_port, vcBegin, vcEnd);
+}
+
+//=============================================================
 
 void InitializeRoutingMap( const Configuration & config )
 {
@@ -1996,4 +2240,7 @@ void InitializeRoutingMap( const Configuration & config )
 
   gRoutingFunctionMap["chaos_mesh"]  = &chaos_mesh;
   gRoutingFunctionMap["chaos_torus"] = &chaos_torus;
+
+  gRoutingFunctionMap["dim_order_chiplet_mesh_chiplet_mesh"] =
+      &dim_order_chiplet_mesh;
 }
