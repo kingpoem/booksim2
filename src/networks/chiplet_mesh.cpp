@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "booksim.hpp"
+#include "chiplet_d2d_cdc.hpp"
 #include "globals.hpp"
 #include "misc_utils.hpp"
 #include "router.hpp"
@@ -131,7 +132,8 @@ static void chiplet_count_ports_globals(int id, bool cx_link, bool cy_link,
 
 ChipletMesh::ChipletMesh(Configuration const &config, std::string const &name)
  : Network(config, name), _Cx(0), _Cy(0), _k_max(0), _connect_x(true),
-      _connect_y(false), _intra_flit_channels(0), _d2d_interfaces(0) {
+      _connect_y(false), _intra_flit_channels(0), _d2d_interfaces(0),
+      _cdc_enable(false) {
   _ComputeSize(config);
   _AllocChiplet(config);
   _BuildNet(config);
@@ -229,6 +231,45 @@ void ChipletMesh::_ComputeSize(Configuration const &config) {
     _die_intra_lat = dil;
   }
 
+  _cdc_enable = (config.GetInt("chiplet_cdc_enable") != 0);
+
+  _die_clock_period.resize(D, 1);
+  _die_clock_phase.resize(D, 0);
+  vector<int> dcp = config.GetIntArray("chiplet_die_clock_period");
+  if (dcp.empty()) {
+  } else if ((int)dcp.size() == 1) {
+    fill(_die_clock_period.begin(), _die_clock_period.end(), max(1, dcp[0]));
+  } else if ((int)dcp.size() == D) {
+    for (int i = 0; i < D; ++i) {
+      _die_clock_period[i] = max(1, dcp[i]);
+    }
+  } else {
+    Error("chiplet_die_clock_period must be empty, one int, or "
+ "chiplet_x*chiplet_y list.");
+  }
+
+  vector<int> dcph = config.GetIntArray("chiplet_die_clock_phase");
+  if (dcph.empty()) {
+  } else if ((int)dcph.size() == 1) {
+    fill(_die_clock_phase.begin(), _die_clock_phase.end(), dcph[0]);
+  } else if ((int)dcph.size() == D) {
+    _die_clock_phase = dcph;
+  } else {
+    Error("chiplet_die_clock_phase must be empty, one int, or "
+          "chiplet_x*chiplet_y list.");
+  }
+
+  bool any_non_default = false;
+  for (int i = 0; i < D; ++i) {
+    if (_die_clock_period[i] != 1 || _die_clock_phase[i] != 0) {
+      any_non_default = true;
+      break;
+    }
+  }
+  if (any_non_default && !_cdc_enable) {
+    Error("chiplet: non-default die clocks require chiplet_cdc_enable = 1.");
+  }
+
   // D2D: two uni-directional flit+credit links per interface (same as mesh hop).
   _channels = _intra_flit_channels + 2 * _d2d_interfaces;
 }
@@ -279,20 +320,43 @@ void ChipletMesh::_AllocChiplet(Configuration const &config) {
     _timed_modules.push_back(_chan_cred[c]);
   }
 
-  int const d2d_stride = 2;
-
-  for (int i = 0; i < _d2d_interfaces; ++i) {
-    int const base = _intra_flit_channels + d2d_stride * i;
-    for (int j = 0; j < 2; ++j) {
-      int const c = base + j;
-      ostringstream name;
-      name << Name() << "_fchan_d2d_" << i << "_" << j;
-      _chan[c] = new FlitChannel(this, name.str(), _classes);
-      _timed_modules.push_back(_chan[c]);
-      name.str("");
-      name << Name() << "_cchan_d2d_" << i << "_" << j;
-      _chan_cred[c] = new CreditChannel(this, name.str());
-      _timed_modules.push_back(_chan_cred[c]);
+  if (_cdc_enable) {
+    chiplet_d2d_cdc::CdcAllocParams cap;
+    cap.classes = _classes;
+    cap.fifo_depth = config.GetInt("chiplet_cdc_fifo_depth");
+    cap.flit_sync_base = max(0, config.GetInt("chiplet_cdc_sync_cycles"));
+    cap.credit_sync_base =
+        max(0, config.GetInt("chiplet_cdc_credit_sync_cycles"));
+    cap.wire_delay = max(1, config.GetInt("chiplet_d2d_latency"));
+    cap.gray_fifo = (config.GetInt("chiplet_cdc_gray_fifo") != 0);
+    cap.gray_stages = max(0, config.GetInt("chiplet_cdc_gray_stages"));
+    int d2d_i = 0;
+    if (_connect_x) {
+      chiplet_d2d_cdc::AllocConnectX(
+          this, Name(), _Cx, _Cy, _die_k, _die_clock_period, _die_clock_phase,
+          _chan, _chan_cred, _timed_modules, _intra_flit_channels, cap, d2d_i);
+    }
+    if (_connect_y) {
+      chiplet_d2d_cdc::AllocConnectY(
+          this, Name(), _Cx, _Cy, _die_k, _die_clock_period, _die_clock_phase,
+          _chan, _chan_cred, _timed_modules, _intra_flit_channels, cap, d2d_i);
+    }
+    assert(d2d_i == _d2d_interfaces);
+  } else {
+    int const d2d_stride = 2;
+    for (int i = 0; i < _d2d_interfaces; ++i) {
+      int const base = _intra_flit_channels + d2d_stride * i;
+      for (int j = 0; j < 2; ++j) {
+        int const c = base + j;
+        ostringstream name;
+        name << Name() << "_fchan_d2d_" << i << "_" << j;
+        _chan[c] = new FlitChannel(this, name.str(), _classes);
+        _timed_modules.push_back(_chan[c]);
+        name.str("");
+        name << Name() << "_cchan_d2d_" << i << "_" << j;
+        _chan_cred[c] = new CreditChannel(this, name.str());
+        _timed_modules.push_back(_chan_cred[c]);
+      }
     }
   }
 }
@@ -378,9 +442,11 @@ void ChipletMesh::_BuildNet(Configuration const &config) {
           int const west = _CoordsToId(cx, cy, k - 1, y);
           int const east = _CoordsToId(cx + 1, cy, 0, y);
           int const base = _intra_flit_channels + d2d_stride * d2d_slot;
-          for (int j = 0; j < 2; ++j) {
-            _chan[base + j]->SetLatency(d2d_lat);
-            _chan_cred[base + j]->SetLatency(d2d_lat);
+          if (!_cdc_enable) {
+            for (int j = 0; j < 2; ++j) {
+              _chan[base + j]->SetLatency(d2d_lat);
+              _chan_cred[base + j]->SetLatency(d2d_lat);
+            }
           }
           d2d_x_base[west] = base;
           d2d_x_base[east] = base;
@@ -397,9 +463,11 @@ void ChipletMesh::_BuildNet(Configuration const &config) {
           int const south = _CoordsToId(cx, cy, x, k - 1);
           int const north = _CoordsToId(cx, cy + 1, x, 0);
           int const base = _intra_flit_channels + d2d_stride * d2d_slot;
-          for (int j = 0; j < 2; ++j) {
-            _chan[base + j]->SetLatency(d2d_lat);
-            _chan_cred[base + j]->SetLatency(d2d_lat);
+          if (!_cdc_enable) {
+            for (int j = 0; j < 2; ++j) {
+              _chan[base + j]->SetLatency(d2d_lat);
+              _chan_cred[base + j]->SetLatency(d2d_lat);
+            }
           }
           d2d_y_base[south] = base;
           d2d_y_base[north] = base;

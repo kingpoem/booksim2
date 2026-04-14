@@ -66,6 +66,14 @@ BookSimConfig::BookSimConfig( )
   _int_map["chiplet_d2d_latency"] = 2;
   AddStrField("chiplet_die_k", "");
   AddStrField("chiplet_die_intra_latency", "");
+  _int_map["chiplet_cdc_enable"] = 0;
+  _int_map["chiplet_cdc_fifo_depth"] = 64;
+  _int_map["chiplet_cdc_sync_cycles"] = 2;
+  _int_map["chiplet_cdc_credit_sync_cycles"] = 2;
+  _int_map["chiplet_cdc_gray_fifo"] = 0;
+  _int_map["chiplet_cdc_gray_stages"] = 2;
+  AddStrField("chiplet_die_clock_period", "");
+  AddStrField("chiplet_die_clock_phase", "");
 
   //used for noc latency calcualtion for network with concentration
   _int_map["x"] = 8; //number of routers in X

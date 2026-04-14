@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "routing": {
+    "topology": "chiplet_mesh",
+    "function": "dim_order_chiplet_mesh"
+  },
+  "mesh_chiplet": {
+    "grid": { "x": 2, "y": 1 },
+    "connect": "x",
+    "intra_latency": 1,
+    "d2d_wire_latency": 2,
+    "dies": [
+      { "id": 0, "k": 2, "clock": { "period": 1, "phase": 0 } },
+      { "id": 1, "k": 2, "clock": { "period": 1, "phase": 0 } }
+    ]
+  },
+  "d2d_cdc": { "enabled": false },
+  "sim": {
+    "traffic": "uniform",
+    "packet_size": 4,
+    "injection_rate": 0.001,
+    "sim_type": "latency",
+    "latency_thres": 8000.0
+  }
+}

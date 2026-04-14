@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/booksim2/mesh_chiplet_spec_v1",
+  "title": "BookSim2 mesh_chiplet spec v1",
+  "description": "Structured chiplet_mesh + optional D2D CDC; maps to BookSim flat config via chiplet_spec_to_config.py",
+  "type": "object",
+  "required": ["schema_version", "routing", "mesh_chiplet", "d2d_cdc", "sim"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "routing": {
+      "type": "object",
+      "required": ["topology", "function"],
+      "properties": {
+        "topology": { "type": "string", "const": "chiplet_mesh" },
+        "function": { "type": "string", "const": "dim_order_chiplet_mesh" }
+      },
+      "additionalProperties": false
+    },
+    "mesh_chiplet": {
+      "type": "object",
+      "required": ["grid", "connect", "dies"],
+      "properties": {
+        "grid": {
+          "type": "object",
+          "required": ["x", "y"],
+          "properties": {
+            "x": { "type": "integer", "minimum": 1 },
+            "y": { "type": "integer", "minimum": 1 }
+          },
+          "additionalProperties": false
+        },
+        "connect": { "type": "string", "enum": ["x", "xy"] },
+        "intra_latency": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Default chiplet_intra_latency; per-die overrides via dies[].intra_latency"
+        },
+        "d2d_wire_latency": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maps to chiplet_d2d_latency"
+        },
+        "dies": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["k", "clock"],
+            "properties": {
+              "id": { "type": "integer", "minimum": 0 },
+              "k": { "type": "integer", "minimum": 1 },
+              "intra_latency": { "type": "integer" },
+              "clock": {
+                "type": "object",
+                "required": ["period", "phase"],
+                "properties": {
+                  "period": { "type": "integer", "minimum": 1 },
+                  "phase": { "type": "integer" }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "d2d_cdc": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "fifo_depth": { "type": "integer", "minimum": 1 },
+        "flit_sync_cycles": { "type": "integer", "minimum": 0 },
+        "credit_sync_cycles": { "type": "integer", "minimum": 0 },
+        "gray": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "stages": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "sim": {
+      "type": "object",
+      "description": "BookSim traffic and router parameters (same keys as legacy chiplet spec sim block)",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

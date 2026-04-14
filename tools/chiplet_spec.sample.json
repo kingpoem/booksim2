@@ -7,7 +7,15 @@
     "die_k": [2, 2],
     "intra_latency": 1,
     "d2d_latency": 2,
-    "die_intra_latency": [3, 1]
+    "die_intra_latency": [3, 1],
+    "cdc_enable": false,
+    "cdc_fifo_depth": 64,
+    "cdc_sync_cycles": 2,
+    "cdc_credit_sync_cycles": 2,
+    "cdc_gray_fifo": 0,
+    "cdc_gray_stages": 2,
+    "die_clock_period": [2, 2],
+    "die_clock_phase": [0, 0]
   },
   "sim": {
     "traffic": "uniform",

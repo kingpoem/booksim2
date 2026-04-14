@@ -53,6 +53,7 @@ class Router ;
 class FlitChannel : public Channel<Flit> {
 public:
   FlitChannel(Module * parent, string const & name, int classes);
+  virtual ~FlitChannel() {}
 
   void SetSource(Router const * const router, int port) ;
   inline Router const * const GetSource() const {
@@ -78,20 +79,12 @@ public:
   virtual void ReadInputs();
   virtual void WriteOutputs();
 
-private:
-  
-  ////////////////////////////////////////
-  //
-  // Power Models OBSOLETE
-  //
-  ////////////////////////////////////////
-
+protected:
   Router const * _routerSource;
   int _routerSourcePort;
   Router const * _routerSink;
   int _routerSinkPort;
 
-  // Statistics for Activity Factors
   vector<int> _active;
   int _idle;
 };

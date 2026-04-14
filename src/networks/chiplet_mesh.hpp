@@ -24,6 +24,10 @@ class ChipletMesh : public Network {
   int _intra_flit_channels;
   int _d2d_interfaces;
 
+  bool _cdc_enable;
+  std::vector<int> _die_clock_period;
+  std::vector<int> _die_clock_phase;
+
   int _CoordsToId(int cx, int cy, int x, int y) const;
   void _IdToCoords(int id, int &cx, int &cy, int &x, int &y) const;
   int _IntraLatency(int cx, int cy, int default_lat) const;

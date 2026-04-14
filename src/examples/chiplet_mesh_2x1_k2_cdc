@@ -1,0 +1,43 @@
+//2x1 chiplet mesh, k=2, D2D with strict CDC (async FIFO + sync + wire delay).
+// Finest simulator tick: die0 router every 2 cycles, die1 every 3 cycles.
+topology = chiplet_mesh;
+routing_function = dim_order_chiplet_mesh;
+
+chiplet_x = 2;
+chiplet_y = 1;
+chiplet_k = 2;
+chiplet_connect = x;
+
+chiplet_cdc_enable = 1;
+chiplet_die_clock_period = {2,3};
+chiplet_die_clock_phase = {0,0};
+chiplet_d2d_latency = 2;
+chiplet_cdc_sync_cycles = 2;
+chiplet_cdc_credit_sync_cycles = 2;
+chiplet_cdc_fifo_depth = 64;
+
+chiplet_intra_latency = 1;
+
+num_vcs     = 8;
+vc_buf_size = 8;
+wait_for_tail_credit = 1;
+
+vc_allocator = islip;
+sw_allocator = islip;
+alloc_iters  = 1;
+
+credit_delay   = 2;
+routing_delay  = 0;
+vc_alloc_delay = 1;
+sw_alloc_delay = 1;
+
+input_speedup     = 2;
+output_speedup    = 1;
+internal_speedup  = 1.0;
+
+traffic = uniform;
+packet_size = 4;
+
+sim_type = latency;
+injection_rate = 0.001;
+latency_thres = 8000.0;

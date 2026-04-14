@@ -3,3 +3,9 @@
 ._*
 .Apple*
 .DS_Store
+.mesh_chiplet_smoke_out/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
